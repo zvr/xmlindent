@@ -55,6 +55,7 @@ ATTRS_SEQ = {
 
 import xml.etree.ElementTree as et
 import datetime
+import re
 import shutil
 import sys
 
@@ -74,13 +75,16 @@ def process(fname):
     tree.write(fname,
             encoding='unicode', xml_declaration=False,
             short_empty_elements=True)
+    ser = pretty(root, 0)
+    with open(fname, 'w') as f:
+        f.write(ser)
 
-def pretty(node, indent):
+def pretty(node, level):
     ser = ''
     tag = node.tag
     text = singlespaceline(node.text)
     tail = singlespaceline(node.tail)
-    debug(len(indent), tag, text, tail, node.attrib)
+    print(level, tag, text, tail, node.attrib)
     start_tag = "<" + tag
     if node.attrib:
         for a in ATTRS_SEQ:
@@ -88,23 +92,27 @@ def pretty(node, indent):
     start_tag += ">"
     end_tag = "</" + tag + ">"
     if node.tag in TAGS_block:
-        child_indent = indent + " " * INDENT
-        before = NL + indent + start_tag + NL + child_indent
-        after = NL + indent + end_tag + NL
+        child_level = level + 1
+        before = '{0}{1}#{2}{0}{3}#'.format(NL, level, start_tag, child_level)
+        after = '{0}{1}#{2}{0}'.format(NL, level, end_tag)
+        # before = NL + level + start_tag + NL + child_level
+        # after = NL + level + end_tag + NL
     elif node.tag in TAGS_inline:
-        child_indent = indent
+        child_level = level
         before = start_tag
-        after = end_tag + NL + indent
+        after = '{1}{0}{2}#'.format(NL, end_tag, level)
+        # before = start_tag
+        # after = end_tag + NL + level
     else:
         warning('Tag', tag, 'neither block nor inline!')
-        child_indent = indent
+        child_level = level
         before = start_tag
         after = end_tag
     ser += before
     if text:
         ser += text
     for child in node:
-        ser += pretty(child, child_indent)
+        ser += pretty(child, child_level)
     if tail:
         ser += tail
     ser += after
@@ -123,6 +131,9 @@ def backup(fname):
     bak_fname = fname + BACKUP_EXT
     shutil.copy(fname, bak_fname)
 
+
+def info(s):
+    print(s)
 
 process(sys.argv[1])
 
