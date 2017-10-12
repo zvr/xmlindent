@@ -71,11 +71,9 @@ def process(fname):
         info('changing root element to SPDX (capital letters)')
     ts = '{:%Y%m%d%H%M%S%z}'.format(datetime.datetime.now())
     root.set('prettyprinted', ts)
-    # pretty(root, "")
-    tree.write(fname,
-            encoding='unicode', xml_declaration=False,
-            short_empty_elements=True)
-    ser = pretty(root, 0)
+    # tree.write(fname, encoding='unicode', xml_declaration=False, short_empty_elements=True)
+    blocks = pretty(root, 0)
+    ser = fmt(blocks)
     with open(fname, 'w') as f:
         f.write(ser)
 
@@ -117,6 +115,25 @@ def pretty(node, level):
         ser += tail
     ser += after
     ser = ser.replace('\n\n', '\n')
+    return ser
+
+def fmt(blocks):
+    bregexp = re.compile(r'((?P<level>\d+)#)?(?P<paragraph>.*)')
+    ser = ''
+    for line in blocks.split('\n'):
+        if line == '':
+            continue
+        m = bregexp.match(line)
+        if m.group('level'):
+            l = int(m.group('level'))
+        else:
+            print('Block without level:', line)
+        par = m.group('paragraph')
+        if par == '':
+            continue
+        indent = l * INDENT
+        width = LINE_LENGTH - indent
+        ser += indent * ' ' + par + '\n'
     return ser
 
 
