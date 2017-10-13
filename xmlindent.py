@@ -58,6 +58,7 @@ import datetime
 import re
 import shutil
 import sys
+import warnings
 
 NL = '\n'
 
@@ -82,11 +83,15 @@ def pretty(node, level):
     tag = node.tag
     text = singlespaceline(node.text)
     tail = singlespaceline(node.tail)
-    print(level, tag, text, tail, node.attrib)
+    print("\t\t", level, tag, text, tail, node.attrib)
     start_tag = "<" + tag
     if node.attrib:
-        for a in ATTRS_SEQ:
-            pass
+        for a in ATTRS_SEQ[tag]:
+            if a in node.attrib:
+                start_tag += ' {}="{}"'.format(a, node.attrib[a])
+                del node.attrib[a]
+        if node.attrib:
+            warning('more attrs remaining in {}: {}'.format(tag, node.attrib.keys()))
     start_tag += ">"
     end_tag = "</" + tag + ">"
     if node.tag in TAGS_block:
@@ -102,7 +107,7 @@ def pretty(node, level):
         # before = start_tag
         # after = end_tag + NL + level
     else:
-        warning('Tag', tag, 'neither block nor inline!')
+        warning('Tag "{}" neither block nor inline!'.format(tag))
         child_level = level
         before = start_tag
         after = end_tag
@@ -127,7 +132,7 @@ def fmt(blocks):
         if m.group('level'):
             l = int(m.group('level'))
         else:
-            print('Block without level:', line)
+            warning('Block without level: "{}"'.format(line))
         par = m.group('paragraph')
         if par == '':
             continue
@@ -148,6 +153,8 @@ def backup(fname):
     bak_fname = fname + BACKUP_EXT
     shutil.copy(fname, bak_fname)
 
+def warning(msg, category=None):
+    warnings.warn(msg, category)
 
 def info(s):
     print(s)
