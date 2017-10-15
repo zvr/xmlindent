@@ -8,6 +8,7 @@
 
 #-----------------------------------------------------------------
 # configuration parameters, self-explanatory :-)
+# they are simply defaults; can be overwritten by command-line options
 
 INDENT = 2
 LINE_LENGTH = 80
@@ -53,12 +54,15 @@ ATTRS_SEQ = {
 
 #-----------------------------------------------------------------
 
-import xml.etree.ElementTree as et
+VERSION = '1.0'
+
+import argparse
 import datetime
 import re
 import shutil
 import sys
 import warnings
+import xml.etree.ElementTree as et
 
 NL = '\n'
 
@@ -183,12 +187,57 @@ def singlespaceline(txt):
 
 
 def backup(fname):
-    bak_fname = fname + BACKUP_EXT
-    shutil.copy(fname, bak_fname)
+    if config['backup_ext']:
+        bak_fname = fname + config['backup_ext']
+        shutil.copy(fname, bak_fname)
 
 
 def warning(msg, category=None):
     warnings.warn(msg, category)
 
-process(sys.argv[1])
+#-----------------------------------------------------------------
+# main program
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(
+            description='Indent XML file(s)')
+    parser.add_argument('filename', nargs='+',
+            help='the XML files to process')
+    parser.add_argument('-w', '--width', action='store', type=int,
+            default = LINE_LENGTH,
+            help='the maximum width of the lines in output')
+    parser.add_argument('-i', '--indent', action='store', type=int,
+            default = INDENT,
+            help='the number of spaces each level is indented')
+    parser.add_argument('-b', '--backup', action='store',
+            default = BACKUP_EXT,
+            help='the backup extension')
+    parser.add_argument('-B', '--nobackup', action='store_true',
+            help='do not keep a backup of the input file(s)')
+    parser.add_argument('--inline-tags', action='store',
+            help='space-separated list of tags to be rendered inline')
+    parser.add_argument('--block-tags', action='store',
+            help='space-separated list of tags to be rendered as blocks')
+    parser.add_argument('-V', '--version', action='version',
+            version='%(prog)s ' + VERSION,
+            help='print the program version')
+
+    args = parser.parse_args()
+
+    config = dict()
+    config['inline'] = TAGS_inline
+    config['block'] = TAGS_block
+    config['max_width'] = args.width
+    config['lvl_indent'] = args.indent
+    config['backup_ext'] = args.backup
+    if args.nobackup:
+        config['backup_ext'] = None
+    if args.inline_tags:
+        config['inline_tags'] = args.inline_tags.split()
+    if args.block_tags:
+        config['block_tags'] = args.block_tags.split()
+
+    for fname in args.filename:
+        process(fname)
 
