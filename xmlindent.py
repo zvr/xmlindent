@@ -76,7 +76,6 @@ def process(fname):
         warning('changing root element to SPDX (capital letters)')
     ts = '{:%Y%m%d%H%M%S%z}'.format(datetime.datetime.now())
     root.set('prettyprinted', ts)
-    # tree.write(fname, encoding='unicode', xml_declaration=False, short_empty_elements=True)
     blocks = pretty(root, 0)
     ser = fmt(blocks)
     with open(fname, 'w') as f:
@@ -98,18 +97,14 @@ def pretty(node, level):
             warning('more attrs remaining in {}: {}'.format(tag, node.attrib.keys()))
     start_tag += ">"
     end_tag = "</" + tag + ">"
-    if node.tag in TAGS_block:
+    if node.tag in config['block']:
         child_level = level + 1
         before = '{0}{1}#{2}{0}{3}#'.format(NL, level, start_tag, child_level)
         after = '{0}{1}#{2}{0}'.format(NL, level, end_tag)
-        # before = NL + level + start_tag + NL + child_level
-        # after = NL + level + end_tag + NL
-    elif node.tag in TAGS_inline:
+    elif node.tag in config['inline']:
         child_level = level
         before = start_tag
         after = '{1}{0}{2}#'.format(NL, end_tag, level)
-        # before = start_tag
-        # after = end_tag + NL + level
     else:
         warning('Tag "{}" neither block nor inline!'.format(tag))
         child_level = level
@@ -140,8 +135,8 @@ def fmt(blocks):
         par = m.group('paragraph')
         if par == '':
             continue
-        indent = l * INDENT
-        width = LINE_LENGTH - indent
+        indent = l * config['lvl_indent']
+        width = config['max_width'] - indent
         for fmtline in to_lines(par, width):
             ser += indent * ' ' + fmtline + '\n'
     return ser
@@ -234,9 +229,9 @@ if __name__ == '__main__':
     if args.nobackup:
         config['backup_ext'] = None
     if args.inline_tags:
-        config['inline_tags'] = args.inline_tags.split()
+        config['inline'] = args.inline_tags.split()
     if args.block_tags:
-        config['block_tags'] = args.block_tags.split()
+        config['block'] = args.block_tags.split()
 
     for fname in args.filename:
         process(fname)
