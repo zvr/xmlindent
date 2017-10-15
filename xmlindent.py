@@ -69,7 +69,7 @@ def process(fname):
     root = tree.getroot()
     if root.tag == 'spdx':
         root.tag = 'SPDX'
-        info('changing root element to SPDX (capital letters)')
+        warning('changing root element to SPDX (capital letters)')
     ts = '{:%Y%m%d%H%M%S%z}'.format(datetime.datetime.now())
     root.set('prettyprinted', ts)
     # tree.write(fname, encoding='unicode', xml_declaration=False, short_empty_elements=True)
@@ -83,7 +83,7 @@ def pretty(node, level):
     tag = node.tag
     text = singlespaceline(node.text)
     tail = singlespaceline(node.tail)
-    print("\t\t", level, tag, text, tail, node.attrib)
+    # print("\t\t", level, tag, text, tail, node.attrib)
     start_tag = "<" + tag
     if node.attrib:
         for a in ATTRS_SEQ[tag]:
@@ -138,8 +138,41 @@ def fmt(blocks):
             continue
         indent = l * INDENT
         width = LINE_LENGTH - indent
-        ser += indent * ' ' + par + '\n'
+        for fmtline in to_lines(par, width):
+            ser += indent * ' ' + fmtline + '\n'
     return ser
+
+
+def to_lines(text, width):
+    words = text.split()
+    count = len(words)
+    last_offset = 0
+    offsets = [last_offset]
+    for w in words:
+        last_offset += len(w)
+        offsets.append(last_offset)
+
+    cost = [0] + [10 ** 20] * count
+    breaks = [0] + [0]      * count
+    for i in range(count):
+        j = i + 1
+        while j <= count:
+            w = offsets[j] - offsets[i] + j - i - 1
+            if w > width:
+                break
+            penalty = cost[i] + (width - w) ** 2
+            if penalty < cost[j]:
+                cost[j] = penalty
+                breaks[j] = i
+            j += 1
+    lines = []
+    last = count
+    while last > 0:
+        first = breaks[last]
+        lines.append(' '.join(words[first:last]))
+        last = first
+    lines.reverse()
+    return lines
 
 
 def singlespaceline(txt):
@@ -153,11 +186,9 @@ def backup(fname):
     bak_fname = fname + BACKUP_EXT
     shutil.copy(fname, bak_fname)
 
+
 def warning(msg, category=None):
     warnings.warn(msg, category)
-
-def info(s):
-    print(s)
 
 process(sys.argv[1])
 
