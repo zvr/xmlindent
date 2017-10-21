@@ -22,6 +22,9 @@ TAGS_inline = [
         'copyright',
         'url',
 
+        'crossRef',
+        'bullet',
+
     ]
 TAGS_block = [
         'body',
@@ -36,21 +39,35 @@ TAGS_block = [
         'title',
         'urls',
 
+        'SPDXLicenseCollection',
+        'license',
+        'crossRefs',
+        'standardLicenseHeader',
+        'notes',
+        'titleText',
+        'item',
+
     ]
 
 # attributes for tags, in the order we want them to appear
 ATTRS_SEQ = {
-        'SPDX': [
-            'name',
-            'identifier',
-            'osi-approved',
+        'SPDXLicenseCollection': [
+            'xmlns',
             'prettyprinted',
+        ],
+        'license': [
+            'licenseId',
+            'name',
+            'isOsiApproved',
         ],
         'alt': [
             'name',
             'match',
         ],
     }
+
+# namespace for all tags
+NAMESPACE='{http://www.spdx.org/license}'
 
 #-----------------------------------------------------------------
 
@@ -84,9 +101,11 @@ def process(fname):
 def pretty(node, level):
     ser = ''
     tag = node.tag
+    if tag.startswith(NAMESPACE):
+        tag = tag[len(NAMESPACE):]
     text = singlespaceline(node.text)
     tail = singlespaceline(node.tail)
-    # print("\t\t", level, tag, text, tail, node.attrib)
+    # print("\t", level, tag, 'text=', text, 'tail=', tail, node.attrib)
     start_tag = "<" + tag
     if node.attrib:
         for a in ATTRS_SEQ[tag]:
@@ -97,11 +116,11 @@ def pretty(node, level):
             warning('more attrs remaining in {}: {}'.format(tag, node.attrib.keys()))
     start_tag += ">"
     end_tag = "</" + tag + ">"
-    if node.tag in config['block']:
+    if tag in config['block']:
         child_level = level + 1
         before = '{0}{1}#{2}{0}{3}#'.format(NL, level, start_tag, child_level)
         after = '{0}{1}#{2}{0}'.format(NL, level, end_tag)
-    elif node.tag in config['inline']:
+    elif tag in config['inline']:
         child_level = level
         before = start_tag
         after = '{1}{0}{2}#'.format(NL, end_tag, level)
@@ -115,9 +134,9 @@ def pretty(node, level):
         ser += text
     for child in node:
         ser += pretty(child, child_level)
+    ser += after
     if tail:
         ser += tail
-    ser += after
     ser = ser.replace('\n\n', '\n')
     return ser
 
@@ -190,8 +209,14 @@ def backup(fname):
 def warning(msg, category=None):
     warnings.warn(msg, category)
 
+
 #-----------------------------------------------------------------
 # main program
+
+if NAMESPACE:
+    full_TAGS_inline = list(NAMESPACE+e for e in TAGS_inline)
+    full_TAGS_block = list(NAMESPACE+e for e in TAGS_block)
+    full_ATTRS_SEQ = dict((NAMESPACE+k, v) for k,v in ATTRS_SEQ.items())
 
 if __name__ == '__main__':
 
